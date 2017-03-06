@@ -20,6 +20,7 @@ import com.google.android.exoplayer2.C;
 import com.google.android.exoplayer2.Format;
 import com.google.android.exoplayer2.extractor.ExtractorOutput;
 import com.google.android.exoplayer2.extractor.TrackOutput;
+import com.google.android.exoplayer2.extractor.ts.TsPayloadReader.TrackIdGenerator;
 import com.google.android.exoplayer2.util.MimeTypes;
 import com.google.android.exoplayer2.util.NalUnitUtil;
 import com.google.android.exoplayer2.util.ParsableByteArray;
@@ -29,7 +30,7 @@ import java.util.Collections;
 /**
  * Parses a continuous H.265 byte stream and extracts individual frames.
  */
-/* package */ final class H265Reader extends ElementaryStreamReader {
+/* package */ final class H265Reader implements ElementaryStreamReader {
 
   private static final String TAG = "H265Reader";
 
@@ -44,6 +45,7 @@ import java.util.Collections;
   private static final int SUFFIX_SEI_NUT = 40;
 
   private TrackOutput output;
+  private SampleReader sampleReader;
   private SeiReader seiReader;
 
   // State that should not be reset on seek.
@@ -56,7 +58,6 @@ import java.util.Collections;
   private final NalUnitTargetBuffer pps;
   private final NalUnitTargetBuffer prefixSei;
   private final NalUnitTargetBuffer suffixSei; // TODO: Are both needed?
-  private final SampleReader sampleReader;
   private long totalBytesWritten;
 
   // Per packet state that gets reset at the start of each packet.
@@ -72,7 +73,6 @@ import java.util.Collections;
     pps = new NalUnitTargetBuffer(PPS_NUT, 128);
     prefixSei = new NalUnitTargetBuffer(PREFIX_SEI_NUT, 128);
     suffixSei = new NalUnitTargetBuffer(SUFFIX_SEI_NUT, 128);
-    sampleReader = new SampleReader(output);
     seiWrapper = new ParsableByteArray();
   }
 
@@ -89,8 +89,9 @@ import java.util.Collections;
   }
 
   @Override
-  public void init(ExtractorOutput extractorOutput, TrackIdGenerator idGenerator) {
+  public void createTracks(ExtractorOutput extractorOutput, TrackIdGenerator idGenerator) {
     output = extractorOutput.track(idGenerator.getNextId());
+    sampleReader = new SampleReader(output);
     seiReader = new SeiReader(extractorOutput.track(idGenerator.getNextId()));
   }
 
